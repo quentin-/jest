@@ -58,9 +58,10 @@ const cleanup = (hasteFS: HasteFS, update: boolean) => {
 const initializeSnapshotState = (
   testFile: Path,
   update: boolean,
+  record: boolean,
   testPath: string,
   expand: boolean,
-) => new SnapshotState(testFile, update, testPath, expand);
+) => new SnapshotState(testFile, update, record, testPath, expand);
 
 const toMatchSnapshot = function(received: any, testName?: string) {
   this.dontThrow && this.dontThrow();
@@ -81,23 +82,30 @@ const toMatchSnapshot = function(received: any, testName?: string) {
   if (pass) {
     return {message: '', pass: true};
   } else {
-    const {count, expected, actual} = result;
+    const {count, expected, reason, actual} = result;
 
-    const expectedString = expected.trim();
-    const actualString = actual.trim();
-    const diffMessage = diff(expectedString, actualString, {
-      aAnnotation: 'Snapshot',
-      bAnnotation: 'Received',
-      expand: snapshotState.expand,
-    });
+    const expectedString = expected ? expected.trim() : '';
+    const actualString = actual ? actual.trim() : '';
 
-    const report = () =>
-      `${RECEIVED_COLOR('Received value')} does not match ` +
-      `${EXPECTED_COLOR('stored snapshot ' + count)}.\n\n` +
-      (diffMessage ||
-        RECEIVED_COLOR('- ' + expectedString) +
-          '\n' +
-          EXPECTED_COLOR('+ ' + actualString));
+    let report;
+
+    if (reason === 'unrecorded') {
+      report = () => 'Tried to record a new snapshot.';
+    } else {
+      const diffMessage = diff(expectedString, actualString, {
+        aAnnotation: 'Snapshot',
+        bAnnotation: 'Received',
+        expand: snapshotState.expand,
+      });
+
+      report = () =>
+        `${RECEIVED_COLOR('Received value')} does not match ` +
+        `${EXPECTED_COLOR('stored snapshot ' + count)}.\n\n` +
+        (diffMessage ||
+          RECEIVED_COLOR('- ' + expectedString) +
+            '\n' +
+            EXPECTED_COLOR('+ ' + actualString));
+    }
 
     const message = () =>
       matcherHint('.toMatchSnapshot', 'value', '') + '\n\n' + report();
@@ -111,6 +119,7 @@ const toMatchSnapshot = function(received: any, testName?: string) {
       message,
       name: 'toMatchSnapshot',
       pass: false,
+      reason,
       report,
     };
   }

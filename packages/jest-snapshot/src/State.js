@@ -23,6 +23,14 @@ const {
 } = require('./utils');
 const fs = require('fs');
 
+type MatchResult = {
+  actual?: string,
+  expected?: string,
+  count?: number,
+  pass: boolean,
+  reason?: 'mismatch' | 'unrecorded',
+};
+
 class SnapshotState {
   _counters: Map<string, number>;
   _dirty: boolean;
@@ -37,11 +45,13 @@ class SnapshotState {
   skippedTests: Set<string>;
   unmatched: number;
   update: boolean;
+  record: boolean;
   updated: number;
 
   constructor(
     testPath: Path,
     update: boolean,
+    record: boolean,
     snapshotPath?: string,
     expand?: boolean,
   ) {
@@ -57,6 +67,7 @@ class SnapshotState {
     this.matched = 0;
     this.unmatched = 0;
     this.update = update;
+    this.record = record;
     this.updated = 0;
     this.skippedTests = new Set();
     this.failedTests = new Set();
@@ -108,7 +119,7 @@ class SnapshotState {
     }
   }
 
-  match(testName: string, received: any, key?: string) {
+  match(testName: string, received: any, key?: string): MatchResult {
     this._counters.set(testName, (this._counters.get(testName) || 0) + 1);
     const count = Number(this._counters.get(testName));
 
@@ -133,8 +144,17 @@ class SnapshotState {
       this._snapshotData[key] = receivedSerialized;
     }
 
+    const snapshotExist = fs.existsSync(this._snapshotPath);
+
+    if (!this.record && !snapshotExist) {
+      return {
+        pass: false,
+        reason: 'unrecorded',
+      };
+    }
+
     if (
-      !fs.existsSync(this._snapshotPath) || // there's no snapshot file
+      !snapshotExist || // there's no snapshot file
       (hasSnapshot && this.update) || // there is a file, but we're updating
       !hasSnapshot // there is a file, but it doesn't have this snaphsot
     ) {
@@ -163,6 +183,7 @@ class SnapshotState {
           count,
           expected: unescape(expected),
           pass: false,
+          reason: 'mismatch',
         };
       } else {
         this.matched++;

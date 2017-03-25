@@ -176,6 +176,13 @@ const options = {
       'also specified.',
     type: 'string',
   },
+  recordSnapshot: {
+    default: true,
+    description: 'Use this flag to disable snapshots recordings. ' +
+      'Usefull in environments where you want to make sure all ' +
+      'snapshots were recorded (e.g: before production)',
+    type: 'boolean',
+  },
   runInBand: {
     alias: 'i',
     description: 'Run all tests serially in the current process (rather than ' +

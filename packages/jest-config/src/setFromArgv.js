@@ -29,6 +29,10 @@ function setFromArgv(config, argv) {
     config.notify = argv.notify;
   }
 
+  if (argv.recordSnapshot) {
+    config.recordSnapshot = argv.recordSnapshot;
+  }
+
   if (argv.bail) {
     config.bail = argv.bail;
   }
